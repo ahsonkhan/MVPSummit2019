@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28525.7
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sample", "Sample.csproj", "{612E38DF-CD2B-4EEA-926B-72649953C346}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JsonSample", "JsonSample.csproj", "{612E38DF-CD2B-4EEA-926B-72649953C346}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

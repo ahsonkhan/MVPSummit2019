@@ -41,6 +41,9 @@ namespace Sample
             return message.ToString();
         }
 
+
+
+
         private static void NewtonsoftWriter(StringWriter output)
         {
             using var json = new JsonTextWriter(output)
