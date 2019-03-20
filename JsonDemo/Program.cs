@@ -114,15 +114,22 @@ namespace Demo
             // The JSON data used for the samples was borrowed from https://github.com/Hipo/university-domains-list
             // under the MIT License (MIT).
 
-            string outputMessage = SyncFileExample("world_universities_and_domains.json");
             Console.WriteLine("Reading JSON from file, sync.");
+            string outputMessage = SyncFileExample("world_universities_and_domains.json");
             Console.WriteLine(outputMessage);
+            Console.WriteLine();
 
+            //Console.WriteLine("Reading JSON from web, async.");
             //outputMessage = await AsyncWebExample(@"http://universities.hipolabs.com/search?", worldWide: true);
-            //Console.WriteLine("Reading JSON from web, async: " + outputMessage);
+            //Console.WriteLine(outputMessage);
+            //Console.WriteLine();
 
+            //Console.WriteLine("Reading JSON from web, async.");
             //outputMessage = await AsyncWebExample(@"http://universities.hipolabs.com/search?country=United%20States");
-            //Console.WriteLine("Reading JSON from web, async: " + outputMessage);
+            //Console.WriteLine(outputMessage);
+            //Console.WriteLine();
+
+            ReadWrite(GetUtf8JsonFromDisk("world_universities_and_domains.json"), "world_universities_and_domains.json");
         }
 
         private static string SyncFileExample(string fileName)
@@ -142,8 +149,10 @@ namespace Demo
             // string jsonString = File.ReadAllText(fileName);
             // return Encoding.UTF8.GetBytes(jsonString);
 
+            (_, string file) = FindFullPathUpToRoot(fileName);
+
             // OR ReadAllBytes if the file encoding is known to be UTF-8 and skip the encoding step:
-            byte[] jsonBytes = File.ReadAllBytes(fileName);
+            byte[] jsonBytes = File.ReadAllBytes(file);
             return jsonBytes;
         }
 
@@ -242,6 +251,141 @@ namespace Demo
             }
 
             return (json.CurrentState, count, total);
+        }
+
+        public static void ReadWrite(ReadOnlySpan<byte> dataUtf8, string originalFileName)
+        {
+            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
+
+            using var output = new ArrayBufferWriter<byte>();
+
+            var state = new JsonWriterState(options: new JsonWriterOptions { Indented = true });
+            var writer = new Utf8JsonWriter(output, state);
+
+            bool hasPropertyName = false;
+            ReadOnlySpan<byte> name = default;
+
+            while (json.Read())
+            {
+                JsonTokenType tokenType = json.TokenType;
+
+                ReadOnlySpan<byte> span = json.ValueSpan;
+
+                switch (tokenType)
+                {
+                    case JsonTokenType.StartArray:
+                        if (hasPropertyName)
+                        {
+                            writer.WriteStartArray(name, escape: false);
+                            hasPropertyName = false;
+                        }
+                        else
+                        {
+                            writer.WriteStartArray();
+                        }
+                        break;
+                    case JsonTokenType.StartObject:
+                        if (hasPropertyName)
+                        {
+                            writer.WriteStartObject(name, escape: false);
+                            hasPropertyName = false;
+                        }
+                        else
+                        {
+                            writer.WriteStartObject();
+                        }
+                        break;
+                    case JsonTokenType.EndArray:
+                        writer.WriteEndArray();
+                        break;
+                    case JsonTokenType.EndObject:
+                        writer.WriteEndObject();
+                        break;
+                    case JsonTokenType.Null:
+                        if (hasPropertyName)
+                        {
+                            writer.WriteNull(name, escape: false);
+                            hasPropertyName = false;
+                        }
+                        else
+                        {
+                            writer.WriteNullValue();
+                        }
+                        break;
+                    case JsonTokenType.Number:
+                        double value = json.GetDouble();
+                        if (hasPropertyName)
+                        {
+                            writer.WriteNumber(name, value, escape: false);
+                            hasPropertyName = false;
+                        }
+                        else
+                        {
+                            writer.WriteNumberValue(value);
+                        }
+                        break;
+                    case JsonTokenType.String:
+                        if (hasPropertyName)
+                        {
+                            writer.WriteString(name, span, escape: false);
+                            hasPropertyName = false;
+                        }
+                        else
+                        {
+                            writer.WriteStringValue(span, escape: false);
+                            hasPropertyName = false;
+                        }
+                        break;
+                    case JsonTokenType.False:
+                    case JsonTokenType.True:
+                        bool valueBool = json.GetBoolean();
+                        if (hasPropertyName)
+                        {
+                            writer.WriteBoolean(name, valueBool, escape: false);
+                            hasPropertyName = false;
+                        }
+                        else
+                        {
+                            writer.WriteBooleanValue(valueBool);
+                        }
+                        break;
+                    case JsonTokenType.PropertyName:
+                        hasPropertyName = true;
+                        name = json.ValueSpan;
+                        break;
+                    case JsonTokenType.None:
+                    case JsonTokenType.Comment:
+                        break;
+                }
+            }
+
+            writer.Flush(isFinalBlock: true);
+
+            (string directory, _) = FindFullPathUpToRoot(originalFileName);
+
+            File.WriteAllBytes(directory + "\\" + "Formatted.json", output.WrittenMemory.ToArray());
+        }
+
+        private static (string directory, string filePath) FindFullPathUpToRoot(string originalFileName)
+        {
+            string dir = Directory.GetCurrentDirectory();
+
+            string file = dir + "\\" + originalFileName;
+
+            while (true)
+            {
+                if (File.Exists(file))
+                {
+                    break;
+                }
+                dir = Path.GetFullPath(Path.Combine(dir, @"..\"));
+                if (dir.EndsWith("MVPSummit2019"))
+                {
+                    break;
+                }
+                file = dir + "\\" + originalFileName;
+            }
+            return (dir, file);
         }
     }
 }
