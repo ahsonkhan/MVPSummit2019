@@ -1,4 +1,6 @@
-﻿using System;
+﻿using BenchmarkDotNet.Running;
+using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -10,19 +12,8 @@ namespace Demo
 {
     class Program
     {
-        public static (int count, int total) CountUniversityOf_Demo(ReadOnlySpan<byte> dataUtf8)
-        {
-            int count = 0;
-            int total = 0;
-
-            // Create reader
-            // Reader loop
-            // Increment total universities on start object
-            // Check if property name is "name" and value starts with "University of", increment counter
-
-            return (count, total);
-        }
-
+        // The JSON data used for the samples was borrowed from https://github.com/Hipo/university-domains-list
+        // under the MIT License (MIT).
         /*
         [
             {
@@ -46,11 +37,80 @@ namespace Demo
         ]
         */
 
+        public static (int count, int total) CountUniversityOf_Demo(ReadOnlySpan<byte> dataUtf8)
+        {
+            int count = 0;
+            int total = 0;
+
+            // 1. Create reader
+            // 2. Reader loop
+            // 3. Increment total universities on start object
+            // 4. Check if property name is "name" and value starts with "University of", increment counter
+
+            return (count, total);
+        }
+
+        public static (int count, int total) CountUniversityOf(ReadOnlySpan<byte> dataUtf8)
+        {
+            int count = 0;
+            int total = 0;
+
+            // 1. Create reader
+            // 2. Reader loop
+            // 3. Increment total universities on start object
+            // 4. Check if property name is "name" and value starts with "University of", increment counter
+
+            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
+
+            while (json.Read())
+            {
+                JsonTokenType tokenType = json.TokenType;
+
+                switch (tokenType)
+                {
+                    case JsonTokenType.StartObject:
+                        total++;
+                        break;
+                    case JsonTokenType.PropertyName:
+                        ReadOnlySpan<byte> name = json.HasValueSequence ? json.ValueSequence.ToArray() : json.ValueSpan;
+                        int idx = name.IndexOf((byte)'\\');
+
+                        bool isMatch = idx == -1 ? name.SequenceEqual(s_nameUtf8) : (json.GetString() == "name");
+
+                        if (isMatch)
+                        {
+                            bool result = json.Read();
+
+                            Debug.Assert(result);  // Assume valid JSON
+                            Debug.Assert(json.TokenType == JsonTokenType.String);   // Assume known, valid JSON schema
+
+                            ReadOnlySpan<byte> value = json.HasValueSequence ? json.ValueSequence.ToArray() : json.ValueSpan;
+                            idx = name.IndexOf((byte)'\\');
+
+                            isMatch = idx == -1 ? value.StartsWith(s_universityOfUtf8) : json.GetString().StartsWith("University of");
+
+                            if (isMatch)
+                            {
+                                count++;
+                            }
+                        }
+                        break;
+                }
+            }
+            return (count, total);
+        }
+
         private static readonly byte[] s_nameUtf8 = Encoding.UTF8.GetBytes("name");
         private static readonly byte[] s_universityOfUtf8 = Encoding.UTF8.GetBytes("University of");
 
         public static /*async Task*/ void Main(string[] args)
         {
+            if (args.Length > 0)
+            {
+                BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+                return;
+            }
+
             // The JSON data used for the samples was borrowed from https://github.com/Hipo/university-domains-list
             // under the MIT License (MIT).
 
@@ -85,41 +145,6 @@ namespace Demo
             // OR ReadAllBytes if the file encoding is known to be UTF-8 and skip the encoding step:
             byte[] jsonBytes = File.ReadAllBytes(fileName);
             return jsonBytes;
-        }
-
-        public static (int count, int total) CountUniversityOf(ReadOnlySpan<byte> dataUtf8)
-        {
-            int count = 0;
-            int total = 0;
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-
-            while (json.Read())
-            {
-                JsonTokenType tokenType = json.TokenType;
-
-                switch (tokenType)
-                {
-                    case JsonTokenType.StartObject:
-                        total++;
-                        break;
-                    case JsonTokenType.PropertyName:
-                        if (json.ValueSpan.SequenceEqual(s_nameUtf8))
-                        {
-                            bool result = json.Read();
-
-                            Debug.Assert(result);  // Assume valid JSON
-                            Debug.Assert(json.TokenType == JsonTokenType.String);   // Assume known, valid JSON schema
-
-                            if (json.ValueSpan.StartsWith(s_universityOfUtf8))
-                            {
-                                count++;
-                            }
-                        }
-                        break;
-                }
-            }
-            return (count, total);
         }
 
         private static async Task<string> AsyncWebExample(string url, bool worldWide = false)
