@@ -55,7 +55,8 @@ namespace Demo
             // under the MIT License (MIT).
 
             string outputMessage = SyncFileExample("world_universities_and_domains.json");
-            Console.WriteLine("Reading JSON from file, sync: " + outputMessage);
+            Console.WriteLine("Reading JSON from file, sync.");
+            Console.WriteLine(outputMessage);
 
             //outputMessage = await AsyncWebExample(@"http://universities.hipolabs.com/search?", worldWide: true);
             //Console.WriteLine("Reading JSON from web, async: " + outputMessage);
