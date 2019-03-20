@@ -72,24 +72,14 @@ namespace Demo
                         total++;
                         break;
                     case JsonTokenType.PropertyName:
-                        ReadOnlySpan<byte> name = json.HasValueSequence ? json.ValueSequence.ToArray() : json.ValueSpan;
-                        int idx = name.IndexOf((byte)'\\');
-
-                        bool isMatch = idx == -1 ? name.SequenceEqual(s_nameUtf8) : (json.GetString() == "name");
-
-                        if (isMatch)
+                        if (json.TextEquals("name", s_nameUtf8))
                         {
                             bool result = json.Read();
 
                             Debug.Assert(result);  // Assume valid JSON
                             Debug.Assert(json.TokenType == JsonTokenType.String);   // Assume known, valid JSON schema
 
-                            ReadOnlySpan<byte> value = json.HasValueSequence ? json.ValueSequence.ToArray() : json.ValueSpan;
-                            idx = name.IndexOf((byte)'\\');
-
-                            isMatch = idx == -1 ? value.StartsWith(s_universityOfUtf8) : json.GetString().StartsWith("University of");
-
-                            if (isMatch)
+                            if (json.TextStartsWith("University of", s_universityOfUtf8))
                             {
                                 count++;
                             }
@@ -386,6 +376,27 @@ namespace Demo
                 file = dir + "\\" + originalFileName;
             }
             return (dir, file);
+        }
+    }
+
+    public static class JsonReaderExtensions
+    {
+        public static bool TextEquals(this ref Utf8JsonReader json, string nameUtf16, byte[] nameUtf8)
+        {
+            ReadOnlySpan<byte> name = json.HasValueSequence ? json.ValueSequence.ToArray() : json.ValueSpan;
+            int idx = name.IndexOf((byte)'\\');
+
+            bool isMatch = idx == -1 ? name.SequenceEqual(nameUtf8) : (json.GetString() == nameUtf16);
+            return isMatch;
+        }
+
+        public static bool TextStartsWith(this ref Utf8JsonReader json, string nameUtf16, byte[] nameUtf8)
+        {
+            ReadOnlySpan<byte> name = json.HasValueSequence ? json.ValueSequence.ToArray() : json.ValueSpan;
+            int idx = name.IndexOf((byte)'\\');
+
+            bool isMatch = idx == -1 ? name.StartsWith(nameUtf8) : json.GetString().StartsWith(nameUtf16);
+            return isMatch;
         }
     }
 }
