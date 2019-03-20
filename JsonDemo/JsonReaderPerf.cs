@@ -10,7 +10,7 @@ using System.Text.Json;
 namespace Demo
 {
     [MemoryDiagnoser]
-    [SimpleJob(warmupCount: 3, targetCount: 5)]
+    [SimpleJob(warmupCount: 3, targetCount: 5, invocationCount: 64)]
     public class JsonReaderPerf
     {
         private readonly string _fileName = "world_universities_and_domains.json";
